@@ -59,9 +59,7 @@ export function App() {
       onToggleModal();
     }
   };
-
   const showLoadMore = galleryImages.length < totalImages;
-
   return (
     <Wrapper>
       <Toaster />
