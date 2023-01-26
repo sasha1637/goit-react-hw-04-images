@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import { useState, useEffect } from 'react';
 import { Searchbar } from './Searchbar/Searchbar';
 import { searchImage } from 'services/API';
 import { ImageGallery } from './ImageGallery/ImageGallery';
@@ -7,107 +7,82 @@ import toast, { Toaster } from 'react-hot-toast';
 import { Modal } from './Modal/Modal';
 import { Wrapper } from './App.styled';
 import { Grid } from 'react-loader-spinner';
-export class App extends Component {
-  state = {
-    page: 1,
-    searchQuery: '',
-    isLoading: false,
-    galleryImages: [],
-    largeImageURL: '',
-    totalImages: 0,
-    showModal: false,
-  };
-  onSearchQuery = evt => {
+export function App() {
+  const [page, setPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [galleryImages, setGalleryImages] = useState([]);
+  const [largeImageURL, setLargeImageURL] = useState('');
+  const [totalImages, setTotalImages] = useState(0);
+  const [showModal, setShowModal] = useState(false);
+  const onSearchQuery = evt => {
     evt.preventDefault();
     const { value } = evt.target.elements.search;
     if (value.trim() === '') {
-      this.setState({
-        galleryImages: [],
-        totalImages: 0,
-      });
+      setGalleryImages([]);
+      setTotalImages(0);
       return toast('Упс( Пустой запрос ');
     }
-    this.setState({
-      searchQuery: value,
-      page: 1,
-      galleryImages: [],
-      totalImages: 0,
-    });
+    setGalleryImages([]);
+    setTotalImages(0);
+    setPage(1);
+    setSearchQuery(value.trim());
   };
-  componentDidUpdate(_, prevState) {
-    const { searchQuery, page } = this.state;
-
-    if (prevState.searchQuery !== searchQuery || prevState.page !== page) {
-      this.fetchImage();
+  useEffect(() => {
+    if (!searchQuery) {
+      return;
     }
-  }
-  fetchImage = async () => {
-    const { searchQuery, page } = this.state;
-    this.setState({ isLoading: true });
-    try {
-      const data = await searchImage(searchQuery, page);
-      if (data.totalHits > 0) {
-        this.setState(prevState => ({
-          galleryImages: [...prevState.galleryImages, ...data.hits],
-          totalImages: data.totalHits,
-        }));
-      } else {
-        toast('Неудачный поиск, сделайте повторный запрос');
+    const fetchImage = async () => {
+      setIsLoading(true);
+      try {
+        const data = await searchImage(searchQuery, page);
+        if (data.totalHits > 0) {
+          setGalleryImages(prevState => [...prevState, ...data.hits]);
+          setTotalImages(data.totalHits);
+        } else {
+          toast('Неудачный поиск, сделайте повторный запрос');
+        }
+      } catch (error) {
+        toString('Упс(: Что-то пошло не так перезагрузите страницу');
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      toString('Упс(: Что-то пошло не так перезагрузите страницу');
-    } finally {
-      this.setState({ isLoading: false });
-    }
-  };
-  onLoadMore = () => {
-    this.setState(prevState => ({ page: prevState.page + 1 }));
-  };
-  onToggleModal = () => {
-    this.setState({ showModal: !this.state.showModal });
-  };
-  onOpenModal = evt => {
+    };
+    fetchImage();
+  }, [searchQuery, page]);
+  const onLoadMore = () => setPage(prevState => prevState + 1);
+  const onToggleModal = () => setShowModal(!showModal);
+  const onOpenModal = evt => {
     const largeImageURL = evt.target.dataset.source;
     if (largeImageURL) {
-      this.setState({ largeImageURL: largeImageURL });
-      this.onToggleModal();
+      setLargeImageURL(largeImageURL);
+      onToggleModal();
     }
   };
-  render() {
-    const {
-      showModal,
-      largeImageURL,
-      imageAlt,
-      galleryImages,
-      totalImages,
-      isLoading,
-    } = this.state;
-    const showLoadMore = galleryImages.length < totalImages;
-    return (
-      <Wrapper>
-        <Toaster />
-        <Searchbar onSubmit={this.onSearchQuery} />
-        <ImageGallery
-          onClick={this.onOpenModal}
-          images={galleryImages}
-        ></ImageGallery>
-        {showLoadMore && <Button onClick={this.onLoadMore} />}
-        {isLoading ? (
-          <Grid
-            height="300"
-            width="300"
-            color="blue"
-            ariaLabel="grid-loading"
-            radius="12.5"
-            wrapperStyle={{ display: 'block', margin: '0 auto' }}
-          />
-        ) : null}
-        {showModal && (
-          <Modal onToggleModal={this.onToggleModal}>
-            <img src={largeImageURL} alt={imageAlt} />
-          </Modal>
-        )}
-      </Wrapper>
-    );
-  }
+
+  const showLoadMore = galleryImages.length < totalImages;
+
+  return (
+    <Wrapper>
+      <Toaster />
+      <Searchbar onSubmit={onSearchQuery} />
+      <ImageGallery onClick={onOpenModal} images={galleryImages}></ImageGallery>
+      {showLoadMore && <Button onClick={onLoadMore} />}
+      {isLoading ? (
+        <Grid
+          height="300"
+          width="300"
+          color="blue"
+          ariaLabel="grid-loading"
+          radius="12.5"
+          wrapperStyle={{ display: 'block', margin: '0 auto' }}
+        />
+      ) : null}
+      {showModal && (
+        <Modal onToggleModal={onToggleModal}>
+          <img src={largeImageURL} alt={largeImageURL} />
+        </Modal>
+      )}
+    </Wrapper>
+  );
 }
